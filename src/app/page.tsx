@@ -1,24 +1,35 @@
-﻿"use client";
+"use client";
 
 import { useState, type FormEvent } from "react";
 import styles from "./page.module.css";
 
 type Fields = { name: string; email: string; description: string };
 type Errors = Partial<Record<keyof Fields, string>>;
+type ApiResponse = {
+  success?: boolean;
+  message?: string;
+  errors?: { fieldErrors?: Partial<Record<keyof Fields, string[]>> };
+};
 
 export default function Home() {
   const [fields, setFields] = useState<Fields>({ name: "", email: "", description: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState("");
 
   function updateField(field: keyof Fields, value: string) {
     setFields((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
     setSuccess(false);
+    setRequestError("");
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+    setSuccess(false);
+    setRequestError("");
     const nextErrors: Errors = {};
     if (!fields.name.trim()) nextErrors.name = "Укажите ваше имя.";
     if (!fields.email.trim()) {
@@ -28,9 +39,44 @@ export default function Home() {
     }
     if (!fields.description.trim()) nextErrors.description = "Расскажите немного о вашей задаче.";
     setErrors(nextErrors);
-    setSuccess(Object.keys(nextErrors).length === 0);
     const firstInvalidField = Object.keys(nextErrors)[0];
-    if (firstInvalidField) document.getElementById(firstInvalidField)?.focus();
+    if (firstInvalidField) {
+      document.getElementById(firstInvalidField)?.focus();
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      const data: ApiResponse = await response.json();
+
+      if (!response.ok || data.success !== true) {
+        const apiErrors: Errors = {};
+        for (const field of ["name", "email", "description"] as const) {
+          const messages = data.errors?.fieldErrors?.[field];
+          if (Array.isArray(messages) && typeof messages[0] === "string") {
+            apiErrors[field] = messages[0];
+          }
+        }
+        setErrors(apiErrors);
+        setRequestError(
+          typeof data.message === "string"
+            ? data.message
+            : "Не удалось отправить форму. Попробуйте ещё раз.",
+        );
+        return;
+      }
+
+      setSuccess(true);
+    } catch {
+      setRequestError("Не удалось получить ответ сервера. Проверьте соединение и попробуйте ещё раз.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -85,30 +131,32 @@ export default function Home() {
           <div className={styles.faq}>
             <details open><summary>Можно прийти только с идеей?</summary><p>Да. Опишите, что вы хотите сделать и для кого. Готовое техническое задание для первого шага не нужно.</p></details>
             <details><summary>Что написать в описании задачи?</summary><p>Расскажите о вашем деле, цели сайта и пожеланиях. Если есть примеры или желаемые сроки, упомяните их.</p></details>
-            <details><summary>Что произойдёт после заполнения формы?</summary><p>На этой учебной странице вы увидите подтверждение корректного заполнения. Данные остаются на странице и никуда не отправляются.</p></details>
+            <details><summary>Что произойдёт после заполнения формы?</summary><p>Данные отправятся на сервер для проверки. После успешной проверки вы увидите подтверждение. Сохранение заявок пока не выполняется.</p></details>
           </div>
         </section>
 
         <section id="form" className={styles.formSection} aria-labelledby="form-title">
-          <div><p className={styles.eyebrow}>03 / ВАШ СЛЕДУЮЩИЙ ШАГ</p><h2 id="form-title">Давайте начнём<br />с вашей идеи<span>.</span></h2><p className={styles.lead}>Пара слов о вас и вашей задаче —<br />вот и первая точка на карте.</p><p className={styles.formNote}>Учебная форма: данные не отправляются<br />и не сохраняются после обновления страницы.</p></div>
-          <form className={styles.form} onSubmit={handleSubmit} noValidate>
+          <div><p className={styles.eyebrow}>03 / ВАШ СЛЕДУЮЩИЙ ШАГ</p><h2 id="form-title">Давайте начнём<br />с вашей идеи<span>.</span></h2><p className={styles.lead}>Пара слов о вас и вашей задаче —<br />вот и первая точка на карте.</p><p className={styles.formNote}>Учебная форма: данные отправляются на проверку.<br />Сохранение заявок пока не выполняется.</p></div>
+          <form className={styles.form} onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
             <div className={styles.field}>
               <label htmlFor="name">Имя</label>
-              <input id="name" name="name" autoComplete="name" placeholder="Как к вам обращаться?" value={fields.name} onChange={(event) => updateField("name", event.target.value)} required aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "name-error" : undefined} />
+              <input id="name" name="name" autoComplete="name" placeholder="Как к вам обращаться?" value={fields.name} onChange={(event) => updateField("name", event.target.value)} required disabled={isSubmitting} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "name-error" : undefined} />
               {errors.name && <p id="name-error" className={styles.error} role="alert">{errors.name}</p>}
             </div>
             <div className={styles.field}>
               <label htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={fields.email} onChange={(event) => updateField("email", event.target.value)} required aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} />
+              <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={fields.email} onChange={(event) => updateField("email", event.target.value)} required disabled={isSubmitting} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "email-error" : undefined} />
               {errors.email && <p id="email-error" className={styles.error} role="alert">{errors.email}</p>}
             </div>
             <div className={styles.field}>
               <label htmlFor="description">Описание задачи</label>
-              <textarea id="description" name="description" rows={4} placeholder="Что вы хотите создать?" value={fields.description} onChange={(event) => updateField("description", event.target.value)} required aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />
+              <textarea id="description" name="description" rows={4} placeholder="Что вы хотите создать?" value={fields.description} onChange={(event) => updateField("description", event.target.value)} required disabled={isSubmitting} aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined} />
               {errors.description && <p id="description-error" className={styles.error} role="alert">{errors.description}</p>}
             </div>
-            <button className={styles.button} type="submit">Проверить форму <span aria-hidden="true">↗</span></button>
-            {success && <p className={styles.success} role="status">Всё получилось! Форма заполнена корректно. Данные никуда не отправлены.</p>}
+            <button className={styles.button} type="submit" disabled={isSubmitting}>{isSubmitting ? "Отправляем…" : "Отправить форму"} <span aria-hidden="true">↗</span></button>
+            {isSubmitting && <p role="status">Отправляем данные, подождите…</p>}
+            {requestError && <p className={styles.error} role="alert">{requestError}</p>}
+            {success && <p className={styles.success} role="status">Данные успешно отправлены и прошли проверку. Сохранение пока не выполняется.</p>}
           </form>
         </section>
       </main>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { saveRequest } from "../../../lib/requests-db.ts";
 
 const requestSchema = z.object({
   name: z.string({ error: "Укажите имя строкой." })
@@ -45,9 +46,20 @@ export async function POST(request: Request) {
     );
   }
 
-  return Response.json({
-    success: true,
-    message: "Данные прошли проверку. Сохранение пока не выполняется.",
-    data: result.data,
-  });
+  try {
+    const saved = await saveRequest(result.data);
+
+    return Response.json({
+      success: true,
+      message: "Заявка успешно сохранена.",
+      data: result.data,
+      id: saved.id,
+      createdAt: saved.createdAt,
+    });
+  } catch {
+    return Response.json(
+      { success: false, message: "Не удалось сохранить заявку. Попробуйте ещё раз." },
+      { status: 500 },
+    );
+  }
 }

@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local form submissions and SQLite journal files
+/data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*

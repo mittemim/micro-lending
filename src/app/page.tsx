@@ -131,12 +131,12 @@ export default function Home() {
           <div className={styles.faq}>
             <details open><summary>Можно прийти только с идеей?</summary><p>Да. Опишите, что вы хотите сделать и для кого. Готовое техническое задание для первого шага не нужно.</p></details>
             <details><summary>Что написать в описании задачи?</summary><p>Расскажите о вашем деле, цели сайта и пожеланиях. Если есть примеры или желаемые сроки, упомяните их.</p></details>
-            <details><summary>Что произойдёт после заполнения формы?</summary><p>Данные отправятся на сервер для проверки. После успешной проверки вы увидите подтверждение. Сохранение заявок пока не выполняется.</p></details>
+            <details><summary>Что произойдёт после заполнения формы?</summary><p>Данные отправятся на сервер для проверки и сохранения. После сохранения заявки вы увидите подтверждение.</p></details>
           </div>
         </section>
 
         <section id="form" className={styles.formSection} aria-labelledby="form-title">
-          <div><p className={styles.eyebrow}>03 / ВАШ СЛЕДУЮЩИЙ ШАГ</p><h2 id="form-title">Давайте начнём<br />с вашей идеи<span>.</span></h2><p className={styles.lead}>Пара слов о вас и вашей задаче —<br />вот и первая точка на карте.</p><p className={styles.formNote}>Учебная форма: данные отправляются на проверку.<br />Сохранение заявок пока не выполняется.</p></div>
+          <div><p className={styles.eyebrow}>03 / ВАШ СЛЕДУЮЩИЙ ШАГ</p><h2 id="form-title">Давайте начнём<br />с вашей идеи<span>.</span></h2><p className={styles.lead}>Пара слов о вас и вашей задаче —<br />вот и первая точка на карте.</p><p className={styles.formNote}>Учебная форма: данные проходят проверку<br />и сохраняются в локальной базе заявок.</p></div>
           <form className={styles.form} onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
             <div className={styles.field}>
               <label htmlFor="name">Имя</label>
@@ -156,7 +156,7 @@ export default function Home() {
             <button className={styles.button} type="submit" disabled={isSubmitting}>{isSubmitting ? "Отправляем…" : "Отправить форму"} <span aria-hidden="true">↗</span></button>
             {isSubmitting && <p role="status">Отправляем данные, подождите…</p>}
             {requestError && <p className={styles.error} role="alert">{requestError}</p>}
-            {success && <p className={styles.success} role="status">Данные успешно отправлены и прошли проверку. Сохранение пока не выполняется.</p>}
+            {success && <p className={styles.success} role="status">Заявка успешно отправлена и сохранена.</p>}
           </form>
         </section>
       </main>
